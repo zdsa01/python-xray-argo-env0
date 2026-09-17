@@ -1,0 +1,5 @@
+1. Get the LoadBalancer address:
+   kubectl get svc {{ include "python-xray-argo.fullname" . }}
+
+2. The subscription endpoint is:
+   http://<LOAD_BALANCER_ADDRESS>/{{ .Values.env.SUB_PATH }}
