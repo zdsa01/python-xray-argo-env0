@@ -7,12 +7,14 @@ on:
       - 'Dockerfile'
       - 'app.py'
       - 'requirements.txt'
+      - 'env0-helm/**'
   pull_request:
     branches: [ main ]
     paths:
       - 'Dockerfile'
       - 'app.py'
       - 'requirements.txt'
+      - 'env0-helm/**'
   workflow_dispatch:
 
 jobs:
