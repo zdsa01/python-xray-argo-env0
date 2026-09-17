@@ -1,0 +1,63 @@
+image:
+  # Public base image: env0/Kubernetes does not need GHCR credentials.
+  repository: python
+  tag: "3.12-slim"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 3000
+
+# Optional public ingress. Leave disabled when using Cloudflare Tunnel or
+# another platform-managed ingress.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+imagePullSecrets: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+
+app:
+  pipIndexUrl: "https://pypi.org/simple"
+
+env:
+  UPLOAD_URL: ""
+  PROJECT_URL: ""
+  AUTO_ACCESS: "false"
+  FILE_PATH: ".cache"
+  SUB_PATH: "sub"
+  UUID: "20e6e496-cf19-45c8-b883-14f5e11cd9f1"
+  NEZHA_SERVER: ""
+  NEZHA_PORT: ""
+  ARGO_DOMAIN: ""
+  ARGO_PORT: "8001"
+  CFIP: "cf.877774.xyz"
+  CFPORT: "443"
+  PUBLIC_HOST: ""
+  NAME: "env0-xray"
+  S5_PORT: ""
+  HY2_PORT: ""
+  REALITY_PORT: ""
+  SHOW_LOG: "true"
+
+secretEnv:
+  NEZHA_KEY: ""
+  ARGO_AUTH: ""
+  CHAT_ID: ""
+  BOT_TOKEN: ""

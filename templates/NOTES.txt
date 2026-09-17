@@ -1,0 +1,7 @@
+Deployment completed.
+
+Service:
+kubectl get svc {{ include "python-xray-argo.fullname" . }}
+
+Subscription endpoint (inside cluster / via ingress):
+http://<SERVICE-ADDRESS>/{{ .Values.env.SUB_PATH }}
