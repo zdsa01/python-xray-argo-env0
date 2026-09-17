@@ -1,21 +1,40 @@
 image:
-  repository: ghcr.io/REPLACE_WITH_GITHUB_OWNER/python-xray-argo
-  tag: latest
-  pullPolicy: Always
+  # Public base image: env0/Kubernetes does not need GHCR credentials.
+  repository: python
+  tag: "3.12-slim"
+  pullPolicy: IfNotPresent
 
 replicaCount: 1
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 3000
+
+# Optional public ingress. Leave disabled when using Cloudflare Tunnel or
+# another platform-managed ingress.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+imagePullSecrets: []
 
 resources:
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 256Mi
   limits:
     cpu: 1000m
-    memory: 512Mi
+    memory: 768Mi
+
+app:
+  pipIndexUrl: "https://pypi.org/simple"
 
 env:
   UPLOAD_URL: ""

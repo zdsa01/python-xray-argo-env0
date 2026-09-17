@@ -1,52 +1,73 @@
-# env0 部署说明
+# env0 部署
 
-这个仓库现在提供两部分：
+此版本不依赖 GHCR 镜像。Helm Chart 内已经包含 `app.py` 和 `requirements.txt`，Pod 启动时使用公开的 `python:3.12-slim`，安装运行依赖后直接启动应用。
 
-- `Dockerfile`：稳定运行应用并提供 HTTP 健康检查。
-- `env0-helm/`：env0 的 Helm Template，可把容器部署到已连接到 env0 的 Kubernetes 集群。
+这样 env0 部署时不再需要 GitHub Actions、私有镜像凭据或 Container Registry。
 
-## 前置条件
+## env0 Template
 
-1. 把仓库推到 GitHub，并让 GitHub Actions 成功发布：
-   `ghcr.io/<GitHub用户名>/python-xray-argo:latest`
-2. 在 env0 中连接一个 Kubernetes 集群。
-3. 创建 Helm Template，仓库指向本仓库，Helm Chart Path 填：`env0-helm`。
+创建 **Helm Template**，VCS 使用 GitHub，Chart Path：
 
-## env0 变量
+`env0-helm`
 
-在 Helm Template 的 Variables 中设置：
+env0 会执行 Helm Diff 和 Helm Upgrade；env0 的 `ENV0_HELM_SET_<name>` 变量会传给 Helm 的 `--set`。
 
-`ENV0_HELM_SET_image.repository=ghcr.io/<GitHub用户名>/python-xray-argo`
+## 必填/推荐变量
 
-常用运行变量直接对应 `env0-helm/values.yaml` 的 `env` / `secretEnv`。
+推荐至少设置：
 
-建议至少设置：
+`ENV0_HELM_SET_env.UUID=<UUID>`
 
-- `ARGO_DOMAIN` + `ARGO_AUTH`：使用 Cloudflare 固定 Tunnel。两项必须一起设置。
-- 或两者留空：程序会使用 Cloudflare Quick Tunnel。
-- `UUID`：建议改成你自己的 UUID。
-- `NAME`：节点名称前缀。
+`ENV0_HELM_SET_env.NAME=env0-xray`
 
-`NEZHA_KEY`、`ARGO_AUTH`、`BOT_TOKEN` 等凭证请在 env0 标记为 Sensitive。env0 官方文档说明敏感变量会加密存储并在日志中脱敏。
+固定 Cloudflare Tunnel：
 
-## 默认服务
+`ENV0_HELM_SET_env.ARGO_DOMAIN=<域名>`
 
-默认只创建一个 `LoadBalancer` TCP Service，端口 `3000`，用于访问：
+`ENV0_HELM_SET_secretEnv.ARGO_AUTH=<Tunnel Token>`
 
-`http://<LoadBalancer地址>/sub`
+将 `ARGO_AUTH` 在 env0 中设置为 Sensitive。
 
-程序自己的 Xray/Cloudflared 端口留在 Pod 内部，其中 Cloudflared 主动向外连接，因此无需把 `8001` 暴露到 Kubernetes Service。
+也可以把 `ARGO_DOMAIN` / `ARGO_AUTH` 留空，应用尝试使用 Cloudflare Quick Tunnel。
 
-## 注意
+## Kubernetes 要求
 
-如果开启 `REALITY_PORT`、`HY2_PORT` 或 `S5_PORT`，这些协议是“直接入站”模式，不能仅依赖默认的 3000 LoadBalancer。需要另外为这些端口建立 Kubernetes Service，并把 `PUBLIC_HOST` 设置为实际对外可访问的 IP/域名；当前 Helm 默认配置不启用这些直连端口。
+Chart 默认创建 `ClusterIP` Service，不要求云厂商提供 `LoadBalancer`。
 
-## 本地检查
+Pod 需要能够访问公网 HTTPS，至少包括：
 
-`python -m py_compile app.py`
+- `pypi.org`：安装 Python 依赖
+- Cloudflare API / Tunnel 网络
+- Xray / Cloudflared 二进制下载源
 
-`docker build -t python-xray-argo:test .`
+如果集群不能访问公网，应用无法完成初始化。
 
-如部署后要确认订阅：
+## 访问订阅
 
-`curl -fsS http://<LoadBalancer地址>/sub`
+Service：`3000`。
+
+应用路径：`/{SUB_PATH}`，默认就是 `/sub`。
+
+如果使用固定 Cloudflare Tunnel，Tunnel 把 `ARGO_PORT=8001` 转到 Pod 内 Xray。
+
+如果需要从 Kubernetes Ingress 暴露订阅 HTTP：
+
+`ENV0_HELM_SET_ingress.enabled=true`
+
+同时设置 Ingress host/class。
+
+## 探针
+
+`/healthz` 仅表示 Python HTTP 进程正常。
+
+`/readyz` 只有成功生成节点订阅后才返回 200。
+
+如果 Xray/Cloudflared 下载失败、Cloudflare Tunnel 建立失败或最终没有生成可用节点，启动流程会返回失败并让 Kubernetes 重启 Pod，而不是假装部署成功。
+
+## env0 日志排错
+
+`ImagePullBackOff`：本版本默认是 `python:3.12-slim`，检查 Kubernetes 节点是否能访问 Docker Hub。
+
+`Readiness probe failed`：执行 `kubectl logs <pod>`，重点检查 pip、Cloudflare 和二进制下载错误。
+
+`CrashLoopBackOff`：执行 `kubectl logs <pod> --previous` 获取上一次启动失败原因。
